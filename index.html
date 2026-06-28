@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Passeggiate Romane Culturali — Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/leaflet/leaflet.css">
+<script src="assets/leaflet/leaflet.js"></script>
+<style>
+:root{
+  --travertino:#f1e9d9; --travertino-chiaro:#fbf7ef; --travertino-scuro:#e4d8c0;
+  --inchiostro:#2c281f; --inchiostro-tenue:#6b6354;
+  --porpora:#9a3b29; --porpora-scuro:#7a2c1d; --oro:#b08542; --oro-tenue:#cda86b;
+  --linea:#d8ccb2; --ombra:0 1px 2px rgba(44,40,31,.06),0 8px 24px rgba(44,40,31,.08);
+  --r:14px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; color:var(--inchiostro);
+  font-family:"Inter",system-ui,sans-serif; line-height:1.55;
+  background:
+    radial-gradient(1200px 600px at 75% -10%, #fbf6ec 0%, rgba(251,246,236,0) 60%),
+    radial-gradient(900px 500px at -5% 110%, #efe5cf 0%, rgba(239,229,207,0) 55%),
+    linear-gradient(160deg,#f4ecdc 0%,#ece0c8 100%);
+  background-attachment:fixed;
+}
+/* texture travertino leggerissima */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; opacity:.04; z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wrap{position:relative; z-index:1; max-width:1460px; margin:0 auto; padding:0 20px}
+
+/* ---------- intestazione ---------- */
+header.hero{ text-align:center; padding:46px 20px 26px }
+.hero .eyebrow{
+  font-family:"Inter"; font-size:.74rem; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--porpora); font-weight:600; margin:0 0 12px
+}
+.hero h1{
+  font-family:"Cinzel",serif; font-weight:700; letter-spacing:.02em;
+  font-size:clamp(2rem,5vw,3.25rem); margin:0; color:var(--inchiostro);
+  text-shadow:0 1px 0 #fff
+}
+.hero .filetto{ width:84px; height:2px; margin:18px auto 16px;
+  background:linear-gradient(90deg,transparent,var(--oro),transparent) }
+.hero p.sub{ font-family:"Cormorant Garamond",serif; font-style:italic;
+  font-size:1.3rem; color:var(--inchiostro-tenue); margin:0 0 6px }
+.hero p.evento{ font-size:.85rem; color:var(--inchiostro-tenue); margin:4px 0 0 }
+
+/* ---------- navigazione gerarchica ---------- */
+nav.filtri{
+  position:sticky; top:0; z-index:20; margin:8px 0 6px;
+  background:rgba(244,236,220,.86); backdrop-filter:blur(8px);
+  border:1px solid var(--linea); border-radius:var(--r);
+  box-shadow:var(--ombra); padding:12px 14px
+}
+.riga-gruppi{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center }
+.riga-cats{ display:flex; gap:7px; flex-wrap:wrap; align-items:center; justify-content:center;
+  margin-top:10px; padding-top:10px; border-top:1px dashed var(--linea) }
+.riga-cats.vuota{ display:none }
+.pill{
+  font:inherit; cursor:pointer; border:1px solid var(--linea);
+  background:var(--travertino-chiaro); color:var(--inchiostro);
+  border-radius:999px; padding:7px 14px; font-size:.86rem; font-weight:500;
+  display:inline-flex; align-items:center; gap:8px; transition:.16s
+}
+.pill:hover{ border-color:var(--oro-tenue); transform:translateY(-1px) }
+.pill .num{ font-family:"Cinzel"; font-weight:700; font-size:.78rem; color:var(--porpora) }
+.pill .descr{ color:var(--inchiostro-tenue); font-size:.74rem }
+.pill[aria-pressed="true"]{
+  background:var(--porpora); border-color:var(--porpora); color:#fdf6ec;
+  box-shadow:0 4px 12px rgba(154,59,41,.28)
+}
+.pill[aria-pressed="true"] .num,.pill[aria-pressed="true"] .descr{ color:#f4d9c4 }
+.pill.cat{ font-size:.82rem; padding:6px 12px }
+.pill.cat .dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto }
+.pill.cat[aria-pressed="true"]{ background:var(--inchiostro); border-color:var(--inchiostro); color:#fbf7ef }
+.pill.disabilitato{ opacity:.5; cursor:not-allowed; }
+.pill.disabilitato:hover{ transform:none; border-color:var(--linea) }
+.pill .tag-arrivo{ font-size:.66rem; letter-spacing:.06em; text-transform:uppercase;
+  background:var(--travertino-scuro); color:var(--inchiostro-tenue); padding:2px 6px; border-radius:6px }
+
+.conteggio{ text-align:center; font-size:.82rem; color:var(--inchiostro-tenue);
+  margin:14px 0 6px; font-style:italic; font-family:"Cormorant Garamond"; font-size:1.02rem }
+
+/* ---------- layout due colonne: schede + mappa ---------- */
+.layout{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,0.92fr);
+  gap:26px; align-items:start; padding-bottom:60px }
+.col-schede{ min-width:0 }
+.mappa-col{ position:sticky; top:14px; align-self:start }
+.mappa-cornice{ position:relative; border:1px solid var(--linea); border-radius:var(--r);
+  overflow:hidden; box-shadow:var(--ombra); background:var(--travertino-chiaro) }
+.mappa-cornice::before{ content:""; position:absolute; inset:0; z-index:401; pointer-events:none;
+  border-radius:var(--r); box-shadow:inset 0 0 0 6px var(--travertino-chiaro), inset 0 0 0 7px var(--linea) }
+#map{ width:100%; height:calc(100vh - 130px); min-height:480px; background:#eee }
+.mappa-overlay{ position:absolute; left:14px; bottom:14px; right:14px; z-index:402;
+  background:rgba(251,247,239,.93); backdrop-filter:blur(3px);
+  border:1px solid var(--linea); border-radius:10px; padding:8px 12px;
+  font-size:.82rem; color:var(--inchiostro-tenue); box-shadow:var(--ombra); pointer-events:none }
+.mappa-overlay strong{ color:var(--inchiostro); font-weight:600 }
+.mappa-legenda{ position:absolute; top:12px; right:12px; z-index:402;
+  background:rgba(251,247,239,.92); border:1px solid var(--linea); border-radius:10px;
+  padding:7px 10px; font-size:.7rem; max-width:46%; box-shadow:var(--ombra) }
+.mappa-legenda .voce{ display:flex; align-items:center; gap:6px; margin:2px 0; white-space:nowrap }
+.mappa-legenda .dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto }
+/* marker numerato a goccia */
+.marker-custom{ width:26px; height:26px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+  display:flex; align-items:center; justify-content:center; color:#fff;
+  box-shadow:0 2px 5px rgba(0,0,0,.35); border:2px solid rgba(255,255,255,.85);
+  font-family:"Cinzel",serif; font-weight:700; font-size:.72rem; transition:.15s }
+.marker-custom span{ transform:rotate(45deg) }
+.marker-custom.dimmed{ opacity:.32; filter:saturate(.4) }
+.leaflet-popup-content-wrapper{ border-radius:10px; border:1px solid var(--linea) }
+.leaflet-popup-content{ font-family:"Inter",sans-serif; font-size:.82rem; color:var(--inchiostro); margin:10px 12px }
+.leaflet-popup-content .popup-num{ font-family:"Cinzel"; color:var(--porpora); font-weight:700; margin-right:4px }
+.leaflet-popup-content .popup-tit{ font-weight:600 }
+.leaflet-popup-content .popup-meta{ margin-top:4px; font-size:.74rem; color:var(--oro); font-style:italic }
+.scheda{ cursor:pointer }
+.scheda.selezionata{ outline:2px solid var(--porpora); outline-offset:1px; box-shadow:0 0 0 4px rgba(154,59,41,.12),var(--ombra) }
+.scheda.attenuata{ opacity:.52 }
+
+/* ---------- griglia schede ---------- */
+.griglia{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:20px; padding:8px 0 0 }
+.scheda{
+  background:var(--travertino-chiaro); border:1px solid var(--linea);
+  border-radius:var(--r); overflow:hidden; box-shadow:var(--ombra);
+  display:flex; flex-direction:column; transition:.18s
+}
+.scheda:hover{ transform:translateY(-3px); box-shadow:0 2px 6px rgba(44,40,31,.08),0 16px 36px rgba(44,40,31,.14) }
+
+/* copertina compatta */
+.cover{ position:relative; height:140px; background-size:cover; background-position:center;
+  cursor:zoom-in; display:flex; align-items:flex-end }
+.cover.placeholder{ cursor:default; align-items:center; justify-content:center }
+.cover .iniziale{ font-family:"Cinzel"; font-size:2.4rem; color:rgba(255,255,255,.92);
+  text-shadow:0 2px 8px rgba(0,0,0,.35) }
+.cover::after{ content:""; position:absolute; inset:0;
+  background:linear-gradient(to top,rgba(28,24,18,.55) 0%,rgba(28,24,18,0) 48%) }
+.badge-cat{ position:absolute; top:10px; left:10px; z-index:2;
+  font-size:.7rem; font-weight:600; letter-spacing:.04em; color:#fff;
+  padding:4px 10px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.25) }
+.badge-plus{ position:absolute; top:10px; right:10px; z-index:2;
+  font-size:.66rem; font-weight:600; letter-spacing:.03em; color:var(--inchiostro);
+  background:var(--oro-tenue); padding:4px 9px; border-radius:999px;
+  box-shadow:0 2px 6px rgba(0,0,0,.2) }
+.cover .lente{ position:absolute; right:10px; bottom:10px; z-index:2; color:#fff;
+  font-size:.68rem; background:rgba(28,24,18,.5); padding:3px 8px; border-radius:8px; opacity:0; transition:.15s }
+.cover:hover .lente{ opacity:1 }
+.badge-gr{ position:absolute; left:10px; bottom:10px; z-index:2;
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:.64rem; font-weight:600; letter-spacing:.03em; color:#fff;
+  background:rgba(28,24,18,.62); padding:3px 9px 3px 7px; border-radius:999px;
+  box-shadow:0 2px 6px rgba(0,0,0,.25) }
+.badge-gr .pall{ width:8px; height:8px; border-radius:50%; display:inline-block }
+.gr-solido .pall{ background:#3f8f4f } .gr-adeguato .pall{ background:#b08542 }
+.gr-generico .pall{ background:#c98a2e } .gr-lacunoso .pall{ background:#9a3b29 }
+.nota-gr{ font-size:.82rem; color:var(--inchiostro); opacity:.85; font-style:italic;
+  border-left:2px solid var(--oro); padding-left:8px; margin:2px 0 8px }
+
+.corpo{ padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px; flex:1 }
+.scheda h3{ font-family:"Cormorant Garamond",serif; font-weight:600;
+  font-size:1.32rem; line-height:1.18; margin:0; color:var(--inchiostro) }
+.personaggio{ font-size:.78rem; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--porpora); font-weight:600; margin:-2px 0 0 }
+.meta{ display:flex; gap:12px; flex-wrap:wrap; font-size:.76rem; color:var(--inchiostro-tenue) }
+.meta span{ display:inline-flex; align-items:center; gap:4px }
+.descr{ font-size:.84rem; color:#534c3f; margin:2px 0 0;
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden }
+
+/* valutazione 3 campi */
+.valut{ display:flex; gap:6px; margin-top:auto; padding-top:8px }
+.vchip{ flex:1; text-align:center; border:1px solid var(--linea); border-radius:9px;
+  padding:5px 2px; background:var(--travertino) }
+.vchip .et{ display:block; font-size:.6rem; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--inchiostro-tenue) }
+.vchip .pt{ display:block; font-family:"Cinzel"; font-size:.98rem; font-weight:700; color:var(--inchiostro) }
+.vchip.tot{ background:var(--inchiostro); border-color:var(--inchiostro) }
+.vchip.tot .et,.vchip.tot .pt{ color:#f6efe1 }
+.vchip .pt.vuoto{ color:var(--oro) }
+
+/* azioni */
+.azioni{ display:flex; gap:8px; margin-top:10px }
+.btn{ font:inherit; font-size:.8rem; font-weight:600; cursor:pointer; border-radius:9px;
+  padding:8px 10px; border:1px solid var(--porpora); text-decoration:none; text-align:center;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; transition:.15s }
+.btn.primario{ background:var(--porpora); color:#fdf6ec; flex:1 }
+.btn.primario:hover{ background:var(--porpora-scuro) }
+.btn.ghost{ background:transparent; color:var(--porpora) }
+.btn.ghost:hover{ background:rgba(154,59,41,.08) }
+.btn.ghost[hidden]{ display:none }
+
+/* pannello approfondimento */
+.approf{ border-top:1px dashed var(--linea); margin-top:10px; padding-top:10px;
+  display:none; font-size:.84rem; color:#4d463a }
+.approf.aperto{ display:block; animation:apri .2s ease }
+@keyframes apri{ from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+.approf h4{ font-family:"Cormorant Garamond"; font-size:1.05rem; margin:10px 0 4px;
+  color:var(--porpora-scuro) }
+.approf p{ margin:0 0 6px }
+.approf ul{ margin:0 0 4px; padding-left:18px }
+.approf li{ margin:0 0 4px }
+.approf .fonte{ font-size:.78rem; color:var(--inchiostro-tenue) }
+
+/* modale copertina */
+.modale{ position:fixed; inset:0; z-index:60; display:none;
+  align-items:center; justify-content:center; padding:24px;
+  background:rgba(28,24,18,.72); backdrop-filter:blur(3px) }
+.modale.aperta{ display:flex; animation:apri .18s ease }
+.modale figure{ margin:0; max-width:min(820px,92vw); background:var(--travertino-chiaro);
+  border-radius:var(--r); overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.4) }
+.modale img{ display:block; width:100%; max-height:78vh; object-fit:contain; background:#241f18 }
+.modale figcaption{ padding:12px 16px; font-family:"Cormorant Garamond"; font-size:1.1rem }
+.modale figcaption small{ display:block; font-family:"Inter"; font-size:.74rem;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--porpora); margin-top:2px }
+.modale .chiudi{ position:absolute; top:18px; right:22px; width:40px; height:40px;
+  border-radius:50%; border:none; background:var(--travertino-chiaro); color:var(--inchiostro);
+  font-size:1.5rem; cursor:pointer; box-shadow:var(--ombra) }
+
+.vuoto-msg{ text-align:center; padding:60px 20px; color:var(--inchiostro-tenue);
+  font-family:"Cormorant Garamond"; font-size:1.2rem; font-style:italic }
+footer{ text-align:center; padding:28px 20px 50px; color:var(--inchiostro-tenue); font-size:.78rem }
+footer .filetto{ width:60px; height:1px; background:var(--linea); margin:0 auto 14px }
+
+@media (max-width:1024px){
+  .layout{ grid-template-columns:1fr }
+  .mappa-col{ position:static; order:-1; margin-bottom:8px }
+  #map{ height:46vh; min-height:340px }
+  .griglia{ grid-template-columns:repeat(auto-fill,minmax(220px,1fr)) }
+}
+@media (max-width:600px){
+  .griglia{ grid-template-columns:1fr }
+  .pill .descr{ display:none }
+  #map{ height:40vh; min-height:280px }
+  .mappa-legenda{ display:none }
+}
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow" id="hd-eyebrow">Turismo Digitale · Tor Vergata</p>
+    <h1 id="hd-titolo">Passeggiate Romane Culturali</h1>
+    <div class="filetto"></div>
+    <p class="sub" id="hd-sub">Itinerari interattivi sulle orme dei grandi di Roma</p>
+    <p class="evento" id="hd-evento"></p>
+  </header>
+
+  <nav class="filtri" aria-label="Filtri passeggiate">
+    <div class="riga-gruppi" id="riga-gruppi"></div>
+    <div class="riga-cats" id="riga-cats"></div>
+  </nav>
+
+  <p class="conteggio" id="conteggio"></p>
+
+  <div class="layout">
+    <div class="col-schede">
+      <main class="griglia" id="griglia" aria-live="polite"></main>
+    </div>
+    <aside class="mappa-col" aria-label="Mappa dei percorsi">
+      <div class="mappa-cornice">
+        <div id="map"></div>
+        <div class="mappa-legenda" id="mappa-legenda"></div>
+        <div class="mappa-overlay" id="mappa-overlay"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="filetto"></div>
+    <div id="ft-evento"></div>
+  </footer>
+</div>
+
+<!-- MODALE COPERTINA -->
+<div class="modale" id="modale" role="dialog" aria-modal="true" aria-label="Copertina del progetto">
+  <button class="chiudi" id="modale-chiudi" aria-label="Chiudi">&times;</button>
+  <figure>
+    <img id="modale-img" src="" alt="">
+    <figcaption><span id="modale-tit"></span><small id="modale-cat"></small></figcaption>
+  </figure>
+</div>
+
+<script>
+const STATO = { data:null, valut:{}, plus:{}, gruppoAttivo:"tutte", catAttiva:"tutte",
+  mappa:null, layer:null, markers:{}, polylines:{}, selezionata:null };
+const $ = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function carica(){
+  try{
+    const [g,v] = await Promise.all([ fetch('data_gallery.json'), fetch('valutazioni.json') ]);
+    if(!g.ok) throw new Error('data_gallery.json non trovato');
+    STATO.data = await g.json();
+    if(v.ok){ STATO.valut = (await v.json()).valutazioni || {}; }
+    try{ const p = await fetch('data_plus.json');
+         if(p.ok) STATO.plus = (await p.json()).arricchimenti || {}; }
+    catch(e){ console.warn('data_plus.json assente: gallery senza arricchimenti.'); }
+    avvia();
+  }catch(err){
+    $('#griglia').innerHTML = `<p class="vuoto-msg">Impossibile caricare i dati.<br>
+      Apri la gallery tramite un server locale (es. <code>python3 -m http.server</code>), non con doppio clic.<br>
+      <small>${esc(err.message)}</small></p>`;
+  }
+}
+
+function avvia(){
+  const m = STATO.data._meta || {};
+  if(m.titolo) $('#hd-titolo').textContent = m.titolo;
+  if(m.sottotitolo) $('#hd-sub').textContent = m.sottotitolo;
+  if(m.corso) $('#hd-eyebrow').textContent = m.corso.replace('Università di Roma «Tor Vergata»','Tor Vergata');
+  if(m.evento){ $('#hd-evento').textContent = m.evento; $('#ft-evento').textContent = m.evento; }
+  costruisciNav();
+  try{ inizializzaMappa(); }catch(e){ console.warn('Mappa non inizializzata:', e); mappaNonDisponibile(); }
+  render();
+}
+
+function mappaNonDisponibile(){
+  STATO.mappa=null;
+  const c=document.querySelector('.mappa-col');
+  if(c) c.innerHTML='<div class="mappa-cornice" style="padding:24px;text-align:center;color:var(--inchiostro-tenue);font-size:.9rem">Mappa non disponibile (Leaflet non caricato).</div>';
+}
+
+function catColore(nome){
+  const c = (STATO.data.categorie||[]).find(x=>x.nome===nome);
+  return c ? c.colore : 'var(--porpora)';
+}
+function progettiGruppo(gid){
+  return STATO.data.passeggiate.filter(p=> gid==='tutte' ? true : p.gruppo===gid);
+}
+
+function costruisciNav(){
+  const rg = $('#riga-gruppi'); rg.innerHTML='';
+  // pill "Tutte"
+  rg.appendChild(pillGruppo({id:'tutte',numero:'∗',nome:'Tutte le passeggiate',sottotitolo:''}, progettiGruppo('tutte').length, true));
+  (STATO.data.gruppi||[]).forEach(g=>{
+    const n = STATO.data.passeggiate.filter(p=>p.gruppo===g.id).length;
+    rg.appendChild(pillGruppo(g, n, n>0));
+  });
+  aggiornaSottocategorie();
+}
+function pillGruppo(g, n, attivabile){
+  const b=document.createElement('button');
+  b.className='pill'+(attivabile?'':' disabilitato');
+  b.setAttribute('aria-pressed', STATO.gruppoAttivo===g.id);
+  const numero = g.numero==='∗' ? '∗' : ['','I','II','III','IV'][g.numero]||g.numero;
+  b.innerHTML = `<span class="num">${numero}</span><span>${esc(g.nome)}</span>`
+    + (g.sottotitolo?`<span class="descr">${esc(g.sottotitolo)}</span>`:'')
+    + (attivabile?'':' <span class="tag-arrivo">in arrivo</span>');
+  if(attivabile) b.onclick=()=>{ STATO.gruppoAttivo=g.id; STATO.catAttiva='tutte';
+    [...rg_buttons()].forEach(x=>x.setAttribute('aria-pressed', x===b)); aggiornaSottocategorie(); render(); };
+  return b;
+}
+function rg_buttons(){ return $('#riga-gruppi').querySelectorAll('.pill'); }
+
+function aggiornaSottocategorie(){
+  const rc = $('#riga-cats'); rc.innerHTML='';
+  let cats=[];
+  if(STATO.gruppoAttivo==='tutte'){ rc.classList.add('vuota'); return; }
+  const g = (STATO.data.gruppi||[]).find(x=>x.id===STATO.gruppoAttivo);
+  cats = (g?g.categorie:[]).filter(c=> STATO.data.passeggiate.some(p=>p.categoria===c));
+  if(!cats.length){ rc.classList.add('vuota'); return; }
+  rc.classList.remove('vuota');
+  rc.appendChild(pillCat('tutte','Tutte', null));
+  cats.forEach(c=>{
+    const n = STATO.data.passeggiate.filter(p=>p.gruppo===STATO.gruppoAttivo && p.categoria===c).length;
+    rc.appendChild(pillCat(c, `${c} · ${n}`, catColore(c)));
+  });
+}
+function pillCat(id,label,colore){
+  const b=document.createElement('button');
+  b.className='pill cat'; b.setAttribute('aria-pressed', STATO.catAttiva===id);
+  b.innerHTML = (colore?`<span class="dot" style="background:${colore}"></span>`:'') + esc(label);
+  b.onclick=()=>{ STATO.catAttiva=id;
+    $('#riga-cats').querySelectorAll('.pill').forEach(x=>x.setAttribute('aria-pressed',x===b)); render(); };
+  return b;
+}
+
+function render(){
+  let lista = STATO.data.passeggiate.slice();
+  if(STATO.gruppoAttivo!=='tutte') lista=lista.filter(p=>p.gruppo===STATO.gruppoAttivo);
+  if(STATO.catAttiva!=='tutte') lista=lista.filter(p=>p.categoria===STATO.catAttiva);
+  lista.sort((a,b)=> (a.categoria+a.titolo).localeCompare(b.categoria+b.titolo,'it'));
+
+  $('#conteggio').textContent = lista.length+' '+(lista.length===1?'passeggiata':'passeggiate');
+  const g=$('#griglia'); g.innerHTML='';
+  if(!lista.length){ g.innerHTML='<p class="vuoto-msg">Nessuna passeggiata in questa selezione.</p>'; aggiornaMappa([]); return; }
+  lista.forEach(p=> g.appendChild(scheda(p)) );
+  STATO.selezionata=null;
+  aggiornaMappa(lista);
+}
+
+function vChip(et,val,max,tot){
+  const vuoto = (val===null||val===undefined);
+  return `<div class="vchip${tot?' tot':''}"><span class="et">${et}</span>
+    <span class="pt${vuoto?' vuoto':''}">${vuoto?'—':val}${max&&!vuoto?'<small style="font-size:.6em;opacity:.6">/'+max+'</small>':''}</span></div>`;
+}
+
+/* ===================== MAPPA + SINCRONIZZAZIONE ===================== */
+function inizializzaMappa(){
+  if(typeof L==='undefined') throw new Error('Leaflet (L) non disponibile');
+  const m = STATO.data._meta || {};
+  const centro = m.centro_mappa || [41.8931, 12.4828];
+  const zoom = m.zoom_iniziale || 13;
+  STATO.mappa = L.map('map', { zoomControl:true, scrollWheelZoom:true }).setView(centro, zoom);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains:'abcd', maxZoom:20
+  }).addTo(STATO.mappa);
+  STATO.layer = L.layerGroup().addTo(STATO.mappa);
+}
+
+function markerIcon(colore, ordine, dimmed){
+  return L.divIcon({ className:'',
+    html:`<div class="marker-custom ${dimmed?'dimmed':''}" style="background:${colore}"><span>${ordine}</span></div>`,
+    iconSize:[26,26], iconAnchor:[13,26], popupAnchor:[0,-26] });
+}
+
+function aggiornaMappa(lista){
+  if(!STATO.mappa) return;
+  STATO.layer.clearLayers(); STATO.markers={}; STATO.polylines={};
+  const tutte=[];
+  lista.forEach(p=>{
+    const col = catColore(p.categoria);
+    const poi = (p.poi||[]).filter(t=> t.lat!=null && t.lng!=null);
+    if(!poi.length) return;
+    const coords=[]; const mks=[];
+    poi.forEach(t=>{
+      const mk = L.marker([t.lat,t.lng], { icon:markerIcon(col,t.ordine,false) });
+      mk.bindPopup(`<span class="popup-num">${t.ordine}.</span><span class="popup-tit">${esc(t.nome)}</span>`
+        + (t.descrizione?`<br>${esc(t.descrizione)}`:'')
+        + `<div class="popup-meta">${esc(p.titolo)} · ${esc(p.personaggio||'')}</div>`);
+      mk.on('click', ()=> seleziona(p.id, true));
+      mk.on('mouseover', ()=> focusPasseggiata(p.id));
+      mk.on('mouseout', ()=>{ if(!STATO.selezionata) resetFocus(); });
+      mk.addTo(STATO.layer); mks.push(mk);
+      coords.push([t.lat,t.lng]); tutte.push([t.lat,t.lng]);
+    });
+    STATO.markers[p.id]=mks;
+    const pl = L.polyline(coords, { color:col, weight:3, opacity:.28, dashArray:'6,7' }).addTo(STATO.layer);
+    pl.on('mouseover', ()=> focusPasseggiata(p.id));
+    pl.on('click', ()=> seleziona(p.id, true));
+    STATO.polylines[p.id]=pl;
+  });
+  if(tutte.length) STATO.mappa.fitBounds(tutte, { padding:[36,36], maxZoom:14 });
+  costruisciLegenda(lista);
+  aggiornaOverlay(lista);
+}
+
+function focusPasseggiata(idSel){
+  Object.entries(STATO.markers).forEach(([id,mks])=>{
+    const p = STATO.data.passeggiate.find(x=>x.id===id); if(!p) return;
+    const col = catColore(p.categoria);
+    mks.forEach((mk,i)=> mk.setIcon(markerIcon(col, (p.poi[i]?.ordine)||(i+1), id!==idSel)));
+  });
+  Object.entries(STATO.polylines).forEach(([id,pl])=> pl.setStyle({ opacity: id===idSel?0.95:0.08, weight:id===idSel?4:2.5 }));
+  // evidenzia la scheda corrispondente
+  document.querySelectorAll('.scheda').forEach(s=> s.classList.toggle('attenuata', s.dataset.id!==idSel));
+}
+
+function resetFocus(){
+  Object.entries(STATO.markers).forEach(([id,mks])=>{
+    const p = STATO.data.passeggiate.find(x=>x.id===id); if(!p) return;
+    const col = catColore(p.categoria);
+    mks.forEach((mk,i)=> mk.setIcon(markerIcon(col, (p.poi[i]?.ordine)||(i+1), false)));
+  });
+  Object.values(STATO.polylines).forEach(pl=> pl.setStyle({ opacity:.28, weight:3 }));
+  document.querySelectorAll('.scheda').forEach(s=> s.classList.remove('attenuata'));
+}
+
+function seleziona(idSel, scrollToScheda){
+  STATO.selezionata = (STATO.selezionata===idSel)? null : idSel;
+  document.querySelectorAll('.scheda').forEach(s=> s.classList.toggle('selezionata', s.dataset.id===STATO.selezionata));
+  if(STATO.selezionata){
+    focusPasseggiata(idSel);
+    const p = STATO.data.passeggiate.find(x=>x.id===idSel);
+    const coords = (p.poi||[]).filter(t=>t.lat!=null).map(t=>[t.lat,t.lng]);
+    if(coords.length) STATO.mappa.fitBounds(coords, { padding:[60,60], maxZoom:15, animate:true });
+    aggiornaOverlay();
+    if(scrollToScheda){
+      const el=document.querySelector(`.scheda[data-id="${idSel}"]`);
+      if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+  }else{ resetFocus(); aggiornaOverlay(); }
+}
+
+function costruisciLegenda(lista){
+  const cats=[...new Set(lista.map(p=>p.categoria))];
+  $('#mappa-legenda').innerHTML = cats.map(c=>
+    `<div class="voce"><span class="dot" style="background:${catColore(c)}"></span>${esc(c)}</div>`).join('');
+  $('#mappa-legenda').style.display = cats.length?'block':'none';
+}
+
+function aggiornaOverlay(lista){
+  const ov=$('#mappa-overlay');
+  if(STATO.selezionata){
+    const p=STATO.data.passeggiate.find(x=>x.id===STATO.selezionata);
+    const n=(p.poi||[]).length;
+    ov.innerHTML = `<strong>${esc(p.titolo)}</strong> · ${esc(p.personaggio||'')} · ${n} tapp${n===1?'a':'e'}`;
+  }else{
+    const n=(lista||STATO.data.passeggiate).reduce((s,p)=>s+((p.poi||[]).length),0);
+    const np=(lista||STATO.data.passeggiate).length;
+    ov.innerHTML = `<strong>${np} passeggiat${np===1?'a':'e'}</strong> · ${n} tappe · passa sul percorso o clicca una scheda`;
+  }
+}
+
+function scheda(p){
+  const col = catColore(p.categoria);
+  const div=document.createElement('article'); div.className='scheda'; div.dataset.id=p.id;
+
+  // copertina compatta
+  let cover;
+  if(p.copertina){
+    cover=`<div class="cover" style="background-image:url('${encodeURI(p.copertina)}')"
+            data-full="${p.copertina_full?encodeURI(p.copertina_full):''}"
+            data-tit="${esc(p.titolo)}" data-cat="${esc(p.categoria)}" role="button" tabindex="0" aria-label="Ingrandisci copertina">`;
+  }else{
+    const ini=(p.personaggio||p.titolo||'?').trim()[0]||'?';
+    cover=`<div class="cover placeholder" style="background:linear-gradient(135deg,${col} 0%,#3a342a 100%)">
+            <span class="iniziale">${esc(ini)}</span>`;
+  }
+  cover+=`<span class="badge-cat" style="background:${col}">${esc(p.categoria)}</span>`;
+  const a=STATO.plus[p.id];
+  const haPlus = a && (a.approfondimento || (a.curiosita&&a.curiosita.length) || (a.fonti&&a.fonti.length));
+  if(haPlus) cover+=`<span class="badge-plus">✦ Approfondimento</span>`;
+  const GRLAB={solido:'Grounding solido',adeguato:'Grounding adeguato',generico:'Grounding generico',lacunoso:'Grounding lacunoso'};
+  if(a && a.stato_grounding && GRLAB[a.stato_grounding]){
+    cover+=`<span class="badge-gr gr-${a.stato_grounding}"><span class="pall"></span>${GRLAB[a.stato_grounding]}</span>`;
+  }
+  if(p.copertina) cover+=`<span class="lente">⤢ ingrandisci</span>`;
+  cover+=`</div>`;
+
+  // meta
+  const isNum = x => x!=null && /^[\d.,\s]+$/.test(String(x));
+  const meta=[];
+  if(p.durata_ore!=null && p.durata_ore!=='') meta.push(`<span>◷ ${esc(p.durata_ore)}${isNum(p.durata_ore)?' h':''}</span>`);
+  if(p.distanza_km!=null && p.distanza_km!=='') meta.push(`<span>↦ ${esc(p.distanza_km)}${isNum(p.distanza_km)?' km':''}</span>`);
+  if(p.n_tappe) meta.push(`<span>⚑ ${esc(p.n_tappe)} tappe</span>`);
+  if(p.difficolta) meta.push(`<span>◆ ${esc(p.difficolta)}</span>`);
+
+  // valutazione 3 campi
+  const v=STATO.valut[p.id]||{};
+  const valut=`<div class="valut">
+    ${vChip('C1',v.C1,12)}${vChip('C2',v.C2,12)}${vChip('C3',v.C3,6)}
+    ${vChip('Tot',v.totale!=null?v.totale:(v.C1!=null?(v.C1+v.C2+v.C3):null),30,true)}
+  </div>`;
+
+  // pannello approfondimento
+  const haNotaGr = a && a.grounding_nota;
+  const haPannello = haPlus || haNotaGr;
+  let panel='';
+  if(haPannello){
+    let inner='';
+    if(haNotaGr){
+      const gl={solido:'Solido',adeguato:'Adeguato',generico:'Generico',lacunoso:'Lacunoso'}[a.stato_grounding]||'';
+      inner+=`<h4>Grounding${gl?' — '+gl:''}</h4><p class="nota-gr">${esc(a.grounding_nota)}</p>`;
+    }
+    if(a.approfondimento) inner+=`<h4>Approfondimento</h4><p>${esc(a.approfondimento)}</p>`;
+    if(a.curiosita&&a.curiosita.length){
+      inner+=`<h4>Curiosità</h4><ul>`+a.curiosita.map(c=>`<li>${esc(typeof c==='string'?c:(c.testo||''))}</li>`).join('')+`</ul>`;
+    }
+    if(a.fonti&&a.fonti.length){
+      inner+=`<h4>Fonti</h4><ul>`+a.fonti.map(f=>`<li class="fonte">${esc(typeof f==='string'?f:(f.citazione||f.url||''))}</li>`).join('')+`</ul>`;
+    }
+    panel=`<div class="approf">${inner}</div>`;
+  }
+
+  div.innerHTML = cover + `<div class="corpo">
+    <h3>${esc(p.titolo)}</h3>
+    ${p.personaggio?`<p class="personaggio">${esc(p.personaggio)}</p>`:''}
+    ${meta.length?`<div class="meta">${meta.join('')}</div>`:''}
+    ${p.descrizione?`<p class="descr">${esc(p.descrizione)}</p>`:''}
+    ${valut}
+    <div class="azioni">
+      <a class="btn primario" href="${p.html?encodeURI(p.html):'#'}" ${p.html?'':'aria-disabled="true"'}>Apri progetto ↗</a>
+      <button class="btn ghost btn-approf" ${haPannello?'':'hidden'}>${haPlus?'Approfondimento':'Grounding'}</button>
+    </div>
+    ${panel}
+  </div>`;
+
+  // eventi
+  const cEl=div.querySelector('.cover');
+  if(p.copertina){
+    const apri=()=>apriModale(cEl.dataset.full||p.copertina, cEl.dataset.tit, cEl.dataset.cat);
+    cEl.addEventListener('click',apri);
+    cEl.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();apri();} });
+  }
+  const bp=div.querySelector('.btn-approf');
+  if(bp){ const labOrig=bp.textContent; bp.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    const pn=div.querySelector('.approf'); pn.classList.toggle('aperto');
+    bp.textContent = pn.classList.contains('aperto')?'Chiudi':labOrig;
+  }); }
+
+  // sincronizzazione con la mappa
+  div.addEventListener('mouseenter', ()=>{ if(STATO.mappa && !STATO.selezionata && (p.poi||[]).length) focusPasseggiata(p.id); });
+  div.addEventListener('mouseleave', ()=>{ if(STATO.mappa && !STATO.selezionata) resetFocus(); });
+  div.addEventListener('click', (e)=>{
+    if(e.target.closest('.cover, a, button')) return;   // non interferire con cover/link/bottoni
+    if(STATO.mappa && (p.poi||[]).length) seleziona(p.id, false);
+  });
+  return div;
+}
+
+function apriModale(src,tit,cat){
+  $('#modale-img').src=src; $('#modale-img').alt='Copertina — '+tit;
+  $('#modale-tit').textContent=tit; $('#modale-cat').textContent=cat;
+  $('#modale').classList.add('aperta'); document.body.style.overflow='hidden';
+}
+function chiudiModale(){ $('#modale').classList.remove('aperta'); document.body.style.overflow='';
+  $('#modale-img').src=''; }
+$('#modale-chiudi').onclick=chiudiModale;
+$('#modale').addEventListener('click',e=>{ if(e.target===$('#modale')) chiudiModale(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') chiudiModale(); });
+
+carica();
+</script>
+</body>
+</html>
